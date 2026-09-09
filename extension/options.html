@@ -32,6 +32,14 @@
   h1 { font-size: 21px; margin: 0; font-weight: 600; letter-spacing: -.01em; }
   .lede { color: var(--text-2); margin: 0 0 30px 42px; }
 
+  /* Account: the top-level sign-in / signed-in surface. Not part of the
+     numbered setup flow — it is the one thing a returning machine needs. */
+  .account { margin: 0 0 26px; }
+  .account h2 { font-size: 16px; margin: 0 0 8px; font-weight: 600; }
+  .account .sub { color: var(--text-2); font-size: 13px; margin: 0 0 12px; }
+  .account .who { font-size: 14px; margin: 0; }
+  .account .body { margin-top: 0; }
+
   .step {
     position: relative; padding: 0 0 22px 42px; border-left: 2px solid var(--border);
     margin-left: 14px;
@@ -109,6 +117,50 @@
 <main>
   <div class="head"><img class="mark" src="icons/icon48.png" alt="Kilroy"><h1>Kilroy</h1></div>
   <p class="lede">Know when your Gmail is opened, using a database only you can read.</p>
+
+  <!-- Account: sign in / signed-in state. Always visible, so a returning
+       machine (project already bundled) can sign in without hunting for a
+       button, and a signed-in one can always sign out or open the dashboard. -->
+  <section class="account" id="account">
+    <div class="body">
+      <div id="signedIn" hidden>
+        <p class="who">Signed in as <strong id="who"></strong></p>
+        <div class="actions">
+          <button id="openDash">Open dashboard</button>
+          <button class="ghost" id="signOut">Sign out</button>
+        </div>
+      </div>
+
+      <div id="signedOut">
+        <h2>Sign in</h2>
+        <div id="signinControls">
+          <p class="sub">
+            Use the account you first set Kilroy up with — the same login shows the
+            same data on every computer.
+          </p>
+          <button id="google">Sign in with Google</button>
+          <small>Uses the Google account you already have — no new password to invent or lose.</small>
+          <details style="margin-top:14px;">
+            <summary style="cursor:pointer;font-size:13px;color:var(--text-2);">
+              Use an email and password instead
+            </summary>
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username">
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password">
+            <small>The login you created when you first set Kilroy up.</small>
+            <div class="actions"><button class="ghost" id="signIn">Sign in</button></div>
+          </details>
+        </div>
+        <p id="signinHint" class="sub" hidden>
+          No project is set up on this machine yet. Set one up below, then come back
+          here to sign in.
+        </p>
+      </div>
+
+      <div class="msg" id="authMsg"></div>
+    </div>
+  </section>
 
   <!-- Express setup -->
   <section class="express" id="express">
@@ -269,35 +321,6 @@ supabase functions deploy r  --no-verify-jwt</code>
     </div>
   </section>
 
-  <!-- 5 -->
-  <section class="step" id="step-auth" data-state="busy">
-    <div class="dot">5</div>
-    <h2>Sign in</h2>
-    <p class="status" data-status>Checking…</p>
-    <div class="body">
-      <div id="signedOut">
-        <button id="google">Sign in with Google</button>
-        <small>Uses the Google account you already have — no new password to invent or lose.</small>
-        <details style="margin-top:14px;">
-          <summary style="cursor:pointer;font-size:13px;color:var(--text-2);">
-            Use an email and password instead
-          </summary>
-          <label for="email">Email</label>
-          <input id="email" type="email" autocomplete="username">
-          <label for="password">Password</label>
-          <input id="password" type="password" autocomplete="current-password">
-          <small>A user you created under Authentication → Users.</small>
-          <div class="actions"><button class="ghost" id="signIn">Sign in</button></div>
-        </details>
-      </div>
-      <div id="signedIn" hidden>
-        <p style="margin:0;font-size:13px;">Signed in as <strong id="who"></strong></p>
-        <div class="actions"><button class="ghost" id="signOut">Sign out</button></div>
-      </div>
-      <div class="msg" id="authMsg"></div>
-    </div>
-  </section>
-
   </div><!-- /manualWrap -->
 
   <!-- Preferences: always available, not part of the numbered setup flow -->
@@ -336,6 +359,7 @@ supabase functions deploy r  --no-verify-jwt</code>
 
 <div class="bar">
   <span class="summary" id="summary">Checking setup…</span>
+  <button class="ghost" id="advanced">Advanced setup</button>
   <button class="ghost" id="recheck">Re-check</button>
 </div>
 

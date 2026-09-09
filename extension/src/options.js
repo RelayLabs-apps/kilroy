@@ -4,7 +4,7 @@ import { provision } from "./provision.js";
 
 const $ = (id) => document.getElementById(id);
 
-const STEP_NUMBER = { project: "1", schema: "2", functions: "3", redirect: "4", auth: "5" };
+const STEP_NUMBER = { project: "1", schema: "2", functions: "3", redirect: "4" };
 
 function setStep(id, state, detail) {
   const step = $(`step-${id}`);
@@ -22,16 +22,19 @@ function say(el, text, kind = "") {
 }
 
 /**
- * Run every check and reflect it in the stepper.
+ * Run every check and reflect it in the account header, the express card, and
+ * the numbered (advanced) steps.
  *
- * Ordered deliberately: each step's failure makes the ones below it
- * meaningless, so a single glance shows the first thing actually worth fixing
- * rather than a wall of red.
+ * The numbered steps are ordered deliberately: each one's failure makes the
+ * ones below it meaningless, so a single glance shows the first thing actually
+ * worth fixing rather than a wall of red. Auth is no longer among them — it
+ * lives in the always-visible account header at the top, because on a returning
+ * machine signing in is the *only* thing left to do and it shouldn't be buried.
  */
 async function runChecks() {
-  const ids = ["project", "schema", "functions", "redirect", "auth"];
+  const stepIds = ["project", "schema", "functions", "redirect"];
   $("summary").textContent = "Checking setup…";
-  for (const id of ids) {
+  for (const id of stepIds) {
     const step = $(`step-${id}`);
     step.dataset.state = "busy";
     step.querySelector("[data-status]").textContent = "Checking…";
@@ -40,40 +43,53 @@ async function runChecks() {
   const project = await api.checkProject();
   setStep("project", project.ok ? "ok" : "bad", project.detail);
 
+  let schema = { ok: false }, functions = { ok: false };
   if (!project.ok) {
-    for (const id of ids.slice(1)) setStep(id, "wait", "Waiting on step 1.");
-    $("summary").textContent = "Start at step 1.";
-    return;
+    for (const id of stepIds.slice(1)) setStep(id, "wait", "Waiting on step 1.");
+  } else {
+    let google;
+    [schema, functions, google] = await Promise.all([
+      api.checkSchema(),
+      api.checkFunctions(),
+      api.checkGoogle(project),
+    ]);
+    setStep("schema", schema.ok ? "ok" : "bad", schema.detail);
+    setStep("functions", functions.ok ? "ok" : "bad", functions.detail);
+    setStep("redirect", google.ok ? "ok" : "bad", google.detail);
+    $("schemaHelp").hidden = schema.ok;
+    $("functionsHelp").hidden = functions.ok;
   }
 
-  const [schema, functions, google, auth] = await Promise.all([
-    api.checkSchema(),
-    api.checkFunctions(),
-    api.checkGoogle(project),
-    api.checkAuth(),
-  ]);
-
-  setStep("schema", schema.ok ? "ok" : "bad", schema.detail);
-  setStep("functions", functions.ok ? "ok" : "bad", functions.detail);
-  setStep("redirect", google.ok ? "ok" : "bad", google.detail);
-  setStep("auth", auth.ok ? "ok" : "bad", auth.detail);
-
-  $("schemaHelp").hidden = schema.ok;
-  $("functionsHelp").hidden = functions.ok;
-
+  const auth = await api.checkAuth();
   const signedIn = auth.ok;
+  // "Ready" = there is a working backend to sign into. The redirect/Google step
+  // isn't required for this: email+password sign-in works without it.
+  const backendReady = project.ok && schema.ok && functions.ok;
+
+  // ---- account header (always visible) ----
   $("signedIn").hidden = !signedIn;
   $("signedOut").hidden = signedIn;
   if (signedIn) $("who").textContent = (await api.whoAmI())?.email ?? "unknown";
+  // Only offer the sign-in controls once there's actually a backend to reach;
+  // otherwise point the user down to setup rather than at a login that can't work.
+  $("signinControls").hidden = !backendReady;
+  $("signinHint").hidden = backendReady;
 
-  // Once you're signed in the whole setup is done; the express card is only in
-  // the way. It comes back if you sign out.
-  $("express").hidden = signedIn;
+  // ---- express one-click card ----
+  // Only a machine with no working backend yet needs it. A returning machine
+  // (bundled project already reachable) never sees the token prompt — it just
+  // signs in above. It also disappears once signed in.
+  $("express").hidden = signedIn || backendReady;
 
-  const failed = [schema, functions, auth].filter((c) => !c.ok).length;
-  $("summary").textContent = failed === 0
-    ? "Everything is set up. Reload Gmail and compose a message."
-    : `${failed} step${failed === 1 ? "" : "s"} still to do.`;
+  // ---- summary ----
+  if (signedIn) {
+    $("summary").textContent = "Signed in and ready. Reload Gmail and compose a message.";
+  } else if (backendReady) {
+    $("summary").textContent = "Project ready — sign in above to finish.";
+  } else {
+    const failed = [project, schema, functions].filter((c) => !c.ok).length;
+    $("summary").textContent = `Set up your project — ${failed} step${failed === 1 ? "" : "s"} to go.`;
+  }
 }
 
 async function loadForm() {
@@ -168,6 +184,10 @@ $("signOut").addEventListener("click", async () => {
   await runChecks();
 });
 
+$("openDash").addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
+});
+
 for (const key of ["trackPixel", "trackLinks"]) {
   $(key).addEventListener("change", async (e) => {
     await api.setSettings({ [key]: e.target.checked });
@@ -179,11 +199,20 @@ $("recheck").addEventListener("click", runChecks);
 
 // ---------------------------------------------------------- express setup --
 
+// The by-hand steps are reachable from two always-available places — the bottom
+// bar in every state, and the link inside the express card — so they can never
+// get "lost" behind a card that has since been hidden.
+function setManual(show) {
+  $("manualWrap").hidden = !show;
+  $("advanced").textContent = show ? "Hide advanced" : "Advanced setup";
+  if (show) $("manualWrap").scrollIntoView({ behavior: "smooth" });
+}
+
+$("advanced").addEventListener("click", () => setManual($("manualWrap").hidden));
+
 $("showManual").addEventListener("click", (e) => {
   e.preventDefault();
-  $("manualWrap").hidden = false;
-  $("showManual").parentElement.hidden = true;
-  $("manualWrap").scrollIntoView({ behavior: "smooth" });
+  setManual(true);
 });
 
 $("findProjects").addEventListener("click", async () => {
