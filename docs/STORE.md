@@ -20,7 +20,7 @@ Kilroy
 **Summary** (≤132 characters)
 
 ```
-See when your Gmail messages are opened — reporting only to a Supabase database you own, and to nobody else.
+See when your Gmail messages are opened. Install, sign in with Google, done — or host your own data.
 ```
 
 **Category:** Workflow & Planning
@@ -29,13 +29,8 @@ See when your Gmail messages are opened — reporting only to a Supabase databas
 **Detailed description**
 
 ```
-Kilroy tells you when the email you send in Gmail gets opened — and reports it
-only to a Supabase project that you own and control. Nobody else, including the
-developer, ever sees your data.
-
-Mailtrack, Streak and the rest work fine, but every message you send passes
-through someone else's server, and your recipient list becomes their asset.
-Kilroy does the same job on infrastructure you control, on the free tier.
+Kilroy tells you when the email you send in Gmail gets opened. Install, sign in
+with Google, and you're tracking — nothing to set up.
 
 What it does
 • Adds an invisible 1×1 pixel to messages you compose, and records the fetch
@@ -52,12 +47,11 @@ Gmail fetches every image through its own proxy, so the address and user agent
 that arrive belong to Google, not your recipient — Kilroy does not pretend
 otherwise.
 
-Bring your own backend
-Kilroy needs a Supabase project (free tier). One-click setup builds everything
-inside a project you create: paste a Supabase access token, pick your project,
-and Kilroy runs the database setup and deploys its endpoints for you. The token
-is used only during setup and discarded afterward. A fully manual setup is
-documented too.
+Own your data
+By default, tracking data is stored in a database run by Relay Labs and scoped to
+your account, so no other user can see it. Prefer to hold it yourself? Kilroy is
+open source, and one click in the options points it at your own Supabase project
+instead — then nobody, including Relay Labs, can access your data.
 
 Open source: https://github.com/RelayLabs-apps/kilroy
 
@@ -118,18 +112,21 @@ mail.google.com: a content script places the tracking on/off toggle beside Gmail
 
 ## Data collection disclosures
 
-Answer the dashboard's data form as follows. The key fact: **the developer
-receives nothing.** All data the extension handles goes to the user's own
-Supabase project.
+Answer the dashboard's data form as follows. The key fact for the **default
+(hosted)** mode: data is stored by Relay Labs on the user's behalf, scoped to
+their account, and never sold or shared. (In self-host mode the extension sends
+data only to the user's own project; disclose the hosted default, since that is
+what most installs use.)
 
-Data the extension handles (disclose honestly):
+Data collected (mark "collected" and, for hosted mode, note it leaves the
+device):
 - **Personally identifiable information** — recipient email addresses and message
-  subjects of messages the user chooses to track. Written to the user's own
-  Supabase project only.
-- **Authentication information** — the user's Supabase session token, stored
-  locally.
+  subjects of messages the user chooses to track. Stored in the Relay Labs
+  Supabase database (hosted) or the user's own (self-host).
+- **Authentication information** — the user's sign-in session, stored locally on
+  the device.
 - **Website content** — the extension reads the Gmail page to place its controls
-  and pixel, but does not collect or transmit email contents.
+  and pixel; it does not collect or transmit email contents.
 
 Certifications (all true for Kilroy):
 - ☑ I do not sell or transfer user data to third parties (outside approved use cases)
@@ -139,8 +136,10 @@ Certifications (all true for Kilroy):
 
 Note for review: Kilroy uses a content script on mail.google.com; it does **not**
 use the Gmail API or any Google OAuth restricted scope, so Google API
-restricted-scope verification does not apply. The `identity` permission targets
-the user's own Supabase project's Google provider, not Gmail.
+restricted-scope verification does not apply. The `identity` permission is for
+Google sign-in to the Kilroy backend (a Supabase project), not for Gmail. Data
+handling is set out in the privacy policy:
+https://github.com/RelayLabs-apps/kilroy/blob/main/docs/PRIVACY.md
 
 ---
 
