@@ -108,36 +108,10 @@ Kilroy never sees the user's Google password and requests no Gmail API scopes.
 Email-and-password sign-in is the default and does not use this permission.
 ```
 
-**Host — https://mail.google.com/***
+**Host permissions** — the store uses a single justification box (1000-char
+limit) for all host permissions. Paste this (983 chars):
 ```
-A content script adds the tracking on/off control beside Gmail's Send button,
-draws open-count badges on the user's own sent messages, and inserts the 1×1
-tracking pixel into messages the user composes. It does not read, copy, store,
-or transmit the contents of any email.
-```
-
-**Host — https://*.supabase.co/***
-```
-Kilroy communicates with the user's own Supabase project — its REST API, Auth,
-and the pixel/redirect Edge Functions — which lives at a per-user subdomain of
-supabase.co. The wildcard is required because every user's project has a
-different subdomain; the extension only ever contacts the one the user
-configured.
-```
-
-**Host — https://api.supabase.com/***
-```
-One-click setup uses the Supabase Management API to create the database schema
-and deploy the two tracking endpoints inside the user's own project, so they do
-not have to run SQL or a CLI by hand. It is used only during setup, with an
-access token the user pastes in, and the token is discarded when setup finishes.
-```
-
-**Host — https://ipwho.is/***
-```
-Optional, on-demand IP geolocation. Called only when the user clicks a lookup
-button on a specific address in the dashboard, never automatically. Results are
-cached locally so the same address is not sent twice.
+mail.google.com: a content script places the tracking on/off toggle beside Gmail's Send button, draws open-count badges on the user's own sent messages, and inserts the 1x1 tracking pixel into messages the user composes. It never reads, stores, or transmits the contents of any email. *.supabase.co: the extension talks only to the user's own Supabase project (its REST API, Auth, and pixel/redirect Edge Functions); the wildcard is required because each user's project lives at a different subdomain, and only the one the user configured is ever contacted. api.supabase.com: one-click setup uses the Supabase Management API to create the database schema and deploy the two tracking endpoints inside the user's own project, using an access token the user pastes that is discarded when setup finishes. ipwho.is: optional IP geolocation, only when the user clicks a lookup button on a specific address, never automatically; results are cached locally so an address is never sent twice.
 ```
 
 ---
