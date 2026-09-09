@@ -145,19 +145,18 @@ https://github.com/RelayLabs-apps/kilroy/blob/main/docs/PRIVACY.md
 
 ## Screenshots
 
-Required: at least one at **1280×800** or **640×400** (PNG or JPEG). Recommended
-three to four. The ones that sell it are the in-Gmail shots — capture those from
-your live install:
+Required: at least one at **1280×800** or **640×400** (PNG or JPEG). All five are
+ready in `dist/store/`, ordered strongest first:
 
-1. **Compose window** with the "Tracking" chip beside Send.
-2. **A sent thread** showing the ✓✓ badge and open count.
-3. **The dashboard** — opens per day and the message table.
-4. **One-click setup** — the options page "Set up in one click" card.
-   (A rendered copy of this one is generated at
-   `dist/store/options-1280x800.png` by the screenshot step; the others need
-   real Gmail data and are yours to capture.)
+1. `dashboard-1280x800.png` — the dashboard (real UI, demo data)
+2. `badge-1280x800.png` — the ✓✓ "K" badge on a sent message
+3. `compose-1280x800.png` — the Tracking chip beside Send (a real capture)
+4. `popup-1280x800.png` — the tracked-message list
+5. `options-1280x800.png` — the setup / sign-in screen
 
-Optional promo tile: 440×280.
+Promo tiles, also in `dist/store/`: `marquee-1400x560.png` (marquee) and
+`promo-440x280.png` (small). All are synthetic/placeholder data — no real
+recipient information.
 
 ---
 
