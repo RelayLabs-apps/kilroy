@@ -360,6 +360,19 @@
 
     const status = await getStatus();
 
+    // Stay out of Gmail accounts Kilroy isn't signed in as. The content script
+    // matches every mail.google.com tab, so it runs in each Google account you
+    // have open — but Kilroy is signed in as exactly one, and a message composed
+    // in a different account would mint a pixel under the wrong identity and be
+    // filed against the wrong person's data. When this tab is plainly a
+    // different account than the one Kilroy holds, add nothing at all: no chip,
+    // no pixel. Fail open when the account can't be read, so a Gmail selector
+    // change never silently disables tracking in the account that IS right.
+    if (status?.ok && status.signedIn && status.email) {
+      const account = currentAccountEmail();
+      if (account && account !== status.email.toLowerCase()) return;
+    }
+
     // The chip goes up before anything can fail, because the states below are
     // exactly the ones worth seeing. Returning early — as this did when signed
     // out — left no chip at all, which is indistinguishable from Kilroy not
