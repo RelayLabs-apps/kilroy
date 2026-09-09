@@ -21,49 +21,64 @@ const DEFAULT_SETTINGS = {
 // ------------------------------------------------------------------ config --
 
 /**
- * Project credentials shipped alongside the extension, if present.
+ * Project credentials shipped with the extension.
  *
- * `extension/config.local.json` is gitignored and travels with the working copy
- * rather than with the repo — which is the whole point. Installing on a second
- * machine used to mean re-typing a project URL and a 46-character key before
- * anything worked; now the file is already there and the only step left is
- * signing in.
+ * Two files, tried in order:
  *
- * Safe to bundle: the publishable key is designed to be public and is already
- * visible in every request the extension makes. Row-level security, scoped to
- * auth.uid(), is what protects the data — not the secrecy of this key. A
- * `secret`/`service_role` key would be an entirely different matter, which is
- * why loading one here is refused outright below.
+ *   config.default.json — committed, points at the Relay Labs HOSTED project.
+ *     This is what a store install runs against: nothing to set up, just sign
+ *     in. It carries `"hosted": true`.
+ *   config.local.json — gitignored, a local override for development. Wins over
+ *     the default when present, and never ships (package.py strips it).
+ *
+ * Safe to commit the default: the publishable key is designed to be public and
+ * is already visible in every request the extension makes. Row-level security,
+ * scoped to auth.uid(), is what isolates each user's data — not the secrecy of
+ * this key. A `secret`/`service_role` key would be an entirely different
+ * matter, which is why loading one here is refused outright below.
  *
  * Read with fetch rather than import: a static import of a missing file kills
- * the whole service worker at load, and this file is legitimately absent on a
- * fresh clone.
+ * the whole service worker at load, and config.local.json is legitimately
+ * absent on a fresh clone and in the shipped package.
  */
+const CONFIG_FILES = ["config.local.json", "config.default.json"];
+
 let bundledPromise = null;
 
 function loadBundledConfig() {
   bundledPromise ??= (async () => {
-    try {
-      const res = await fetch(chrome.runtime.getURL("config.local.json"));
-      if (!res.ok) return null;
-      const raw = await res.json();
+    for (const file of CONFIG_FILES) {
+      try {
+        const res = await fetch(chrome.runtime.getURL(file));
+        if (!res.ok) continue;
+        const raw = await res.json();
 
-      const url = String(raw?.url ?? "").trim().replace(/\/+$/, "");
-      const anonKey = String(raw?.anonKey ?? "").replace(/\s+/g, "");
-      if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) || !anonKey) return null;
+        const url = String(raw?.url ?? "").trim().replace(/\/+$/, "");
+        const anonKey = String(raw?.anonKey ?? "").replace(/\s+/g, "");
+        if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) || !anonKey) continue;
 
-      // Same refusal as setConfig(). A bundled file gets no more trust than a
-      // pasted value — less, if anything, since nobody watched it go in.
-      if (/^sb_secret_/.test(anonKey) || /"role":"service_role"/.test(atobSafe(anonKey))) {
-        console.warn("Kilroy: config.local.json holds a secret key. Ignoring it.");
-        return null;
+        // Same refusal as setConfig(). A bundled file gets no more trust than a
+        // pasted value — less, if anything, since nobody watched it go in.
+        if (/^sb_secret_/.test(anonKey) || /"role":"service_role"/.test(atobSafe(anonKey))) {
+          console.warn(`Kilroy: ${file} holds a secret key. Ignoring it.`);
+          continue;
+        }
+        return { url, anonKey, bundled: true, hosted: raw?.hosted === true };
+      } catch {
+        // absent or malformed: try the next candidate
       }
-      return { url, anonKey, bundled: true };
-    } catch {
-      return null;  // absent or malformed: fall back to whatever was saved
     }
+    return null;
   })();
   return bundledPromise;
+}
+
+/** Whether the config in force is the Relay Labs hosted default (not self-host). */
+export async function configIsHosted() {
+  const { config } = await store.get("config");
+  if (config) return false;  // a saved override is always self-host
+  const bundled = await loadBundledConfig();
+  return Boolean(bundled?.hosted);
 }
 
 /**

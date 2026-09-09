@@ -36,14 +36,18 @@ STAGE = Path(tempfile.mkdtemp(prefix="kilroy-pkg-"))
 EXCLUDE_NAMES = {"config.local.json", "config.local.js", "_preview.html"}
 EXCLUDE_SUFFIX = {".pem", ".key", ".zip", ".log"}
 
-# Anything that looks like credential material, checked against the staged
-# tree as a backstop to the exclusions above.
-SECRETS = re.compile(
-    r"sb_publishable_[A-Za-z0-9._-]{10,}"
-    r"|sb_secret_[A-Za-z0-9._-]{10,}"
+# Secret material — never allowed to ship, anywhere.
+HARD_SECRETS = re.compile(
+    r"sb_secret_[A-Za-z0-9._-]{10,}"
     r"|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}"
     r"|-----BEGIN [A-Z ]*PRIVATE KEY-----"
 )
+
+# A publishable key is public by design and is SUPPOSED to ship — it names the
+# hosted backend the extension defaults to. It belongs in config.default.json
+# and nowhere else; anywhere else, it is a leak worth stopping.
+PUBLISHABLE = re.compile(r"sb_publishable_[A-Za-z0-9._-]{10,}")
+PUBLISHABLE_ALLOWED = {"config.default.json"}
 
 REQUIRED_ICONS = ("16", "32", "48", "128")
 
@@ -112,10 +116,12 @@ for path in staged:
         text = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, ValueError):
         continue  # binary, e.g. the icons
-    found = SECRETS.search(text)
-    if found:
-        fail(f"{path.relative_to(STAGE)} contains what looks like key material: "
-             f"{found.group(0)[:16]}…")
+    hard = HARD_SECRETS.search(text)
+    if hard:
+        fail(f"{path.relative_to(STAGE)} contains a SECRET key: {hard.group(0)[:16]}…")
+    if path.name not in PUBLISHABLE_ALLOWED and PUBLISHABLE.search(text):
+        fail(f"{path.relative_to(STAGE)} carries a publishable key outside "
+             f"config.default.json — is a project key leaking into source?")
 
 if (STAGE / "config.local.json").exists():
     fail("config.local.json reached the staged tree")
