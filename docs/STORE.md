@@ -112,21 +112,23 @@ mail.google.com: a content script places the tracking on/off toggle beside Gmail
 
 ## Data collection disclosures
 
-Answer the dashboard's data form as follows. The key fact for the **default
-(hosted)** mode: data is stored by Relay Labs on the user's behalf, scoped to
-their account, and never sold or shared. (In self-host mode the extension sends
-data only to the user's own project; disclose the hosted default, since that is
-what most installs use.)
+Fill the **Privacy practices** form for the **default (hosted)** mode — that is
+what most installs use. In hosted mode the data below **leaves the device** and
+is stored by Relay Labs, scoped to the user's account, never sold or shared.
+(Self-host mode sends the same data only to the user's own project.)
 
-Data collected (mark "collected" and, for hosted mode, note it leaves the
-device):
-- **Personally identifiable information** — recipient email addresses and message
-  subjects of messages the user chooses to track. Stored in the Relay Labs
-  Supabase database (hosted) or the user's own (self-host).
-- **Authentication information** — the user's sign-in session, stored locally on
-  the device.
-- **Website content** — the extension reads the Gmail page to place its controls
-  and pixel; it does not collect or transmit email contents.
+Mark these categories as **collected** (and, since hosted mode transmits them to
+a remote server, not kept only on the device):
+- **Personally identifiable information** — recipient email addresses of tracked
+  messages, and the user's own email from sign-in.
+- **Personal communications** — the subject lines of messages the user tracks.
+- **Authentication information** — the sign-in session, held on the device and
+  sent to the backend to authenticate requests.
+
+Do **not** mark these — Kilroy does not collect them: **Website content** (it
+reads the Gmail page to place its controls and pixel, but does not collect or
+transmit email bodies), location, financial info, health info, web history, or
+user activity.
 
 Certifications (all true for Kilroy):
 - ☑ I do not sell or transfer user data to third parties (outside approved use cases)
