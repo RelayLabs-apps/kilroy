@@ -9,7 +9,30 @@
  * through chrome.runtime.sendMessage.
  */
 
-const store = chrome.storage.local;
+// Config and preferences live in sync storage, so a self-host project and your
+// track settings follow you to every machine you're signed into Chrome on. The
+// session and the geo cache stay in local storage: auth is per-device, and the
+// cache would only bloat sync's small quota. Both are the same "storage"
+// permission — nothing new is requested.
+const synced = chrome.storage.sync;
+const local = chrome.storage.local;
+
+/**
+ * The saved self-host override, if any, read from sync — with a one-time
+ * migration of a value written to local storage by a version before this split,
+ * so a self-hoster who updates doesn't silently revert to the hosted default.
+ */
+async function savedConfig() {
+  const fromSync = (await synced.get("config")).config;
+  if (fromSync) return fromSync;
+  const legacy = (await local.get("config")).config;
+  if (legacy) {
+    await synced.set({ config: legacy });
+    await local.remove("config");
+    return legacy;
+  }
+  return null;
+}
 
 const DEFAULT_SETTINGS = {
   trackPixel: true,
@@ -75,8 +98,7 @@ function loadBundledConfig() {
 
 /** Whether the config in force is the Relay Labs hosted default (not self-host). */
 export async function configIsHosted() {
-  const { config } = await store.get("config");
-  if (config) return false;  // a saved override is always self-host
+  if (await savedConfig()) return false;  // a saved override is always self-host
   const bundled = await loadBundledConfig();
   return Boolean(bundled?.hosted);
 }
@@ -86,14 +108,12 @@ export async function configIsHosted() {
  * override rather than a suggestion.
  */
 export async function getConfig() {
-  const { config } = await store.get("config");
-  return config ?? (await loadBundledConfig());
+  return (await savedConfig()) ?? (await loadBundledConfig());
 }
 
 /** Whether the config in force came from the bundled file rather than the form. */
 export async function configIsBundled() {
-  const { config } = await store.get("config");
-  return !config && Boolean(await loadBundledConfig());
+  return !(await savedConfig()) && Boolean(await loadBundledConfig());
 }
 
 /** Whether a bundled file exists at all, override or no. */
@@ -109,7 +129,8 @@ export async function hasBundledConfig() {
  * than as the wrong account.
  */
 export async function clearConfig() {
-  await store.remove(["config", "session"]);
+  await synced.remove("config");
+  await local.remove(["config", "session"]);  // config: clear any legacy copy too
 }
 
 export async function setConfig({ url, anonKey }) {
@@ -147,7 +168,8 @@ export async function setConfig({ url, anonKey }) {
   if (/^sb_secret_/.test(key) || /"role":"service_role"/.test(atobSafe(key))) {
     throw new Error("That's the secret/service_role key. It bypasses row-level security — use the publishable (anon) key.");
   }
-  await store.set({ config: { url: clean, anonKey: key } });
+  await synced.set({ config: { url: clean, anonKey: key } });
+  await local.remove("config");  // supersede any pre-sync copy on this device
 }
 
 /** Best-effort peek at a JWT payload, purely to catch a pasted service key. */
@@ -174,13 +196,16 @@ export async function endpointBase() {
 // ---------------------------------------------------------------- settings --
 
 export async function getSettings() {
-  const { settings } = await store.get("settings");
+  // Sync first; fall back to any copy a pre-sync version left on this device.
+  const settings = (await synced.get("settings")).settings
+    ?? (await local.get("settings")).settings;
   return { ...DEFAULT_SETTINGS, ...(settings ?? {}) };
 }
 
 export async function setSettings(patch) {
   const next = { ...(await getSettings()), ...patch };
-  await store.set({ settings: next });
+  await synced.set({ settings: next });
+  await local.remove("settings");  // supersede any pre-sync copy
   return next;
 }
 
@@ -199,7 +224,7 @@ function normalizeSession(raw) {
 }
 
 async function readSession() {
-  const { session } = await store.get("session");
+  const { session } = await local.get("session");
   return session ?? null;
 }
 
@@ -230,7 +255,7 @@ export async function signIn(email, password) {
   const cfg = await requireConfig();
   const data = await authRequest(cfg, "password", { email, password });
   const session = normalizeSession(data);
-  await store.set({ session });
+  await local.set({ session });
   return session;
 }
 
@@ -267,7 +292,7 @@ export async function signUp(email, password) {
     );
   }
   const session = normalizeSession(data);
-  await store.set({ session });
+  await local.set({ session });
   return session;
 }
 
@@ -337,12 +362,12 @@ export async function signInWithGoogle() {
     email: user?.email ?? null,
     user_id: user?.id ?? null,
   };
-  await store.set({ session });
+  await local.set({ session });
   return session;
 }
 
 export async function signOut() {
-  await store.remove("session");
+  await local.remove("session");
 }
 
 export async function whoAmI() {
@@ -368,10 +393,10 @@ async function accessToken() {
           refresh_token: session.refresh_token,
         });
         const next = normalizeSession(data);
-        await store.set({ session: next });
+        await local.set({ session: next });
         return next.access_token;
       } catch (err) {
-        await store.remove("session");  // token is dead; force a re-login
+        await local.remove("session");  // token is dead; force a re-login
         throw err;
       } finally {
         refreshInFlight = null;
@@ -566,7 +591,7 @@ export async function lookupIp(ip) {
   if (!/^[0-9a-f:.]{3,45}$/i.test(address)) throw new Error("Not a usable address.");
 
   const key = `geo:${address}`;
-  const cached = (await store.get(key))[key];
+  const cached = (await local.get(key))[key];
   if (cached !== undefined) return cached;
 
   let res;
@@ -589,7 +614,7 @@ export async function lookupIp(ip) {
 
   // Cached even when null: a second lookup of an address with no result would
   // just send it again for the same nothing.
-  await store.set({ [key]: label });
+  await local.set({ [key]: label });
   return label;
 }
 
