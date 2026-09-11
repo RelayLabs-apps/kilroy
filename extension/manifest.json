@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Kilroy",
-  "version": "1.0.2",
+  "name": "Free Email Tracker for Gmail — Read Receipts & Open Tracking | Kilroy",
+  "version": "1.0.3",
   "description": "See when your Gmail messages get opened. Sign in with Google — or connect your own Supabase backend.",
   "icons": {
     "16": "icons/icon16.png",
