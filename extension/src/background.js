@@ -135,6 +135,13 @@ const handlers = {
   },
 };
 
+// First install: put the setup page in front of the user rather than leaving
+// them to discover the options page on their own. Only on install — reopening
+// it on every update would be a nuisance.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === "install") chrome.runtime.openOptionsPage();
+});
+
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   const handler = handlers[msg?.type];
   if (!handler) {

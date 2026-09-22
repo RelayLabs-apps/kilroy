@@ -83,7 +83,7 @@ async function runChecks() {
 
   // ---- summary ----
   if (signedIn) {
-    $("summary").textContent = "Signed in and ready. Reload Gmail and compose a message.";
+    $("summary").textContent = "Signed in and ready — compose a message in Gmail to try it.";
   } else if (backendReady) {
     $("summary").textContent = "Project ready — sign in above to finish.";
   } else {
@@ -148,14 +148,46 @@ $("copyRedirect").addEventListener("click", async () => {
   setTimeout(() => { $("copyRedirect").textContent = "Copy"; }, 1500);
 });
 
+/**
+ * Reload any Gmail tabs open at sign-in time.
+ *
+ * A content script only injects into tabs opened AFTER the extension is
+ * installed, so a Gmail tab that was already open shows no Kilroy until it
+ * reloads. Rather than teach first-timers to "hard refresh," we do it for them
+ * the moment they sign in. Tabs opened later inject on their own; this is only
+ * for the ones already sitting there. Uses the mail.google.com host permission,
+ * so no extra permission is needed.
+ */
+async function reloadGmail() {
+  try {
+    const tabs = await chrome.tabs.query({ url: "https://mail.google.com/*" });
+    await Promise.all(tabs.map((t) => chrome.tabs.reload(t.id)));
+    return tabs.length;
+  } catch {
+    return 0;
+  }
+}
+
+function signedInMessage(reloaded) {
+  return reloaded
+    ? `Signed in — your Gmail ${reloaded === 1 ? "tab was" : "tabs were"} refreshed. ` +
+      "Compose a message and the Tracking chip appears by Send."
+    : "Signed in. Open Gmail and compose a message — the Tracking chip appears by Send.";
+}
+
+async function afterSignIn() {
+  await runChecks();
+  const n = await reloadGmail();
+  say($("authMsg"), signedInMessage(n), "ok");
+}
+
 $("google").addEventListener("click", async () => {
   const button = $("google");
   button.disabled = true;
   say($("authMsg"), "Opening Google…");
   try {
     await api.signInWithGoogle();
-    say($("authMsg"), "");
-    await runChecks();
+    await afterSignIn();
   } catch (err) {
     say($("authMsg"), err.message, "bad");
   } finally {
@@ -170,8 +202,7 @@ $("signIn").addEventListener("click", async () => {
   try {
     await api.signIn($("email").value.trim(), $("password").value);
     $("password").value = "";
-    say($("authMsg"), "");
-    await runChecks();
+    await afterSignIn();
   } catch (err) {
     say($("authMsg"), err.message, "bad");
   } finally {
@@ -181,7 +212,14 @@ $("signIn").addEventListener("click", async () => {
 
 $("signOut").addEventListener("click", async () => {
   await api.signOut();
+  say($("authMsg"), "");
   await runChecks();
+});
+
+$("openGmail").addEventListener("click", async () => {
+  const [tab] = await chrome.tabs.query({ url: "https://mail.google.com/*" });
+  if (tab) chrome.tabs.update(tab.id, { active: true });
+  else chrome.tabs.create({ url: "https://mail.google.com/" });
 });
 
 $("openDash").addEventListener("click", () => {
