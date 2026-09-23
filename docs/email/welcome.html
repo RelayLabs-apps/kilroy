@@ -1,0 +1,189 @@
+<!--
+  Kilroy welcome email.
+
+  Subject:   You're set up with Kilroy 👋
+  Preheader: How to use it, what the numbers really mean, and how your data stays yours.
+
+  Sending: transactional HTML for Resend. The logo below loads from the public
+  repo; for production, rehost it on your own domain (or Resend/Supabase storage)
+  so it isn't subject to GitHub's caching/rate limits. Table layout + inline
+  styles for broad client support; a <style> block adds light polish where
+  supported.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Welcome to Kilroy</title>
+<style>
+  /* Progressive enhancement only — every critical style is also inline. */
+  body { margin: 0; padding: 0; background: #eceae4; }
+  a { color: #1f5fa8; }
+  .sp { line-height: 1px; font-size: 1px; }
+  @media (max-width: 620px) {
+    .card { width: 100% !important; border-radius: 0 !important; }
+    .pad { padding-left: 24px !important; padding-right: 24px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#eceae4;">
+  <!-- hidden preheader -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+    How to use it, what the numbers really mean, and how your data stays yours.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eceae4;">
+    <tr>
+      <td align="center" style="padding:28px 12px;">
+
+        <table role="presentation" width="600" class="card" cellpadding="0" cellspacing="0"
+               style="width:600px;max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;
+                      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+                      box-shadow:0 6px 24px rgba(20,30,45,0.10);">
+
+          <!-- header band -->
+          <tr>
+            <td style="background:#0a2c50;padding:28px 32px;" class="pad">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:14px;">
+                    <img src="https://raw.githubusercontent.com/RelayLabs-apps/kilroy/main/extension/icons/icon128.png"
+                         width="44" height="44" alt="Kilroy"
+                         style="display:block;width:44px;height:44px;border:0;border-radius:50%;">
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <div style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.01em;">Kilroy</div>
+                    <div style="color:#9fb6d1;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;">Gmail open tracking · own your data</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- intro -->
+          <tr>
+            <td class="pad" style="padding:32px 32px 8px;">
+              <h1 style="margin:0 0 10px;font-size:24px;line-height:1.25;color:#141a20;font-weight:700;">
+                You're all set.
+              </h1>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#3c4652;">
+                Kilroy quietly tells you when the emails you send get opened. Here's how to use
+                it, what to trust, and how your data stays yours — the parts worth knowing that
+                the extension can't fit next to a button.
+              </p>
+            </td>
+          </tr>
+
+          <!-- using it -->
+          <tr>
+            <td class="pad" style="padding:24px 32px 4px;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0a2c50;margin-bottom:12px;">Using it</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="width:26px;vertical-align:top;color:#0a2c50;font-weight:700;font-size:15px;">1</td>
+                  <td style="padding-bottom:12px;font-size:15px;line-height:1.55;color:#3c4652;">
+                    Compose a message in Gmail — a <strong>Tracking</strong> chip appears next to Send.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width:26px;vertical-align:top;color:#0a2c50;font-weight:700;font-size:15px;">2</td>
+                  <td style="padding-bottom:12px;font-size:15px;line-height:1.55;color:#3c4652;">
+                    Send it. When it's opened, a <strong>✓✓ with a count</strong> appears on your sent
+                    message, right inside the thread.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width:26px;vertical-align:top;color:#0a2c50;font-weight:700;font-size:15px;">3</td>
+                  <td style="font-size:15px;line-height:1.55;color:#3c4652;">
+                    Open the <strong>dashboard</strong> from the Kilroy icon for opens per day, opens by
+                    recipient, and every message you've tracked.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- what an open means -->
+          <tr>
+            <td class="pad" style="padding:24px 32px 4px;">
+              <div style="background:#f4f6f9;border-radius:10px;padding:18px 20px;">
+                <div style="font-size:15px;font-weight:700;color:#141a20;margin-bottom:6px;">What an "open" really means</div>
+                <p style="margin:0;font-size:14px;line-height:1.6;color:#4a5563;">
+                  An open is <em>an image being fetched</em> — not proof a person read your email.
+                  Kilroy sets aside the things that fetch images but aren't people: security scanners,
+                  Apple Mail's privacy prefetch, and your own re-reads. It never invents a city or a
+                  device. Treat the <strong>first-open time</strong> as the reliable number; counts are a
+                  floor, not a total.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- own your data -->
+          <tr>
+            <td class="pad" style="padding:24px 32px 4px;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0a2c50;margin-bottom:8px;">Your data is yours</div>
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#3c4652;">
+                Your tracking is scoped to your account and isolated from every other user — no one
+                else can see it. Want to hold it entirely yourself? One click in the options points
+                Kilroy at your own database, and then nobody, not even us, can read it.
+              </p>
+            </td>
+          </tr>
+
+          <!-- good to know -->
+          <tr>
+            <td class="pad" style="padding:24px 32px 4px;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0a2c50;margin-bottom:12px;">Good to know</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;line-height:1.55;color:#3c4652;">
+                <tr><td style="width:22px;vertical-align:top;color:#0a2c50;">•</td>
+                  <td style="padding-bottom:10px;"><strong>Turn it off per message.</strong> Click the chip beside Send to not track a particular email.</td></tr>
+                <tr><td style="width:22px;vertical-align:top;color:#0a2c50;">•</td>
+                  <td style="padding-bottom:10px;"><strong>Pin Kilroy</strong> — click the puzzle-piece icon in Chrome's toolbar, then the pin next to Kilroy, so the dashboard is always one click away.</td></tr>
+                <tr><td style="width:22px;vertical-align:top;color:#0a2c50;">•</td>
+                  <td><strong>Using your own database?</strong> Export your settings (Options → Preferences) — a reinstall wipes them, and the file is the only way back.</td></tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td class="pad" align="center" style="padding:30px 32px 8px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td bgcolor="#0a2c50" style="border-radius:8px;">
+                    <a href="https://mail.google.com/" target="_blank"
+                       style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+                      Open Gmail and try it
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- footer -->
+          <tr>
+            <td class="pad" style="padding:24px 32px 32px;">
+              <hr style="border:none;border-top:1px solid #e6e4de;margin:0 0 16px;">
+              <p style="margin:0 0 6px;font-size:12px;line-height:1.6;color:#8a8f97;">
+                Kilroy is open source — read every line at
+                <a href="https://github.com/RelayLabs-apps/kilroy" style="color:#1f5fa8;">github.com/RelayLabs-apps/kilroy</a>.
+                Open tracking sits in a genuine grey area; use it on your own correspondence, at your
+                own discretion.
+              </p>
+              <p style="margin:0;font-size:12px;line-height:1.6;color:#8a8f97;">
+                Relay Labs · You're receiving this because you set up Kilroy.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
