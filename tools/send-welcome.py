@@ -11,7 +11,7 @@ on the command line (it would land in shell history) and never commit it.
     $env:RESEND_API_KEY = "re_xxx"
 
     python tools/send-welcome.py you@example.com
-    python tools/send-welcome.py you@example.com --from "Kilroy <hello@relaylabs.site>"
+    python tools/send-welcome.py you@example.com --from "Kilroy <kilroy@relaylabs.site>"
 
 Sends docs/email/welcome.html as-is, so edit that file to change the email.
 """
@@ -20,7 +20,7 @@ from pathlib import Path
 
 ap = argparse.ArgumentParser()
 ap.add_argument("to", help="recipient email address")
-ap.add_argument("--from", dest="sender", default="Kilroy <hello@relaylabs.site>",
+ap.add_argument("--from", dest="sender", default="Kilroy <kilroy@relaylabs.site>",
                 help="From header; the domain must be verified in Resend")
 ap.add_argument("--subject", default="You're set up with Kilroy \U0001f44b")
 args = ap.parse_args()
