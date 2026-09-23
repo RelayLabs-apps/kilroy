@@ -1,0 +1,37 @@
+You're all set with Kilroy.
+
+Kilroy tells you when the emails you send in Gmail get opened. Here's what to
+know — the parts the extension can't fit next to a button.
+
+USING IT
+1. Compose a message in Gmail. A "Tracking" chip appears next to Send.
+2. Send it. When it's opened, a double-check and a count appear on your sent
+   message, right in the thread.
+3. Open the dashboard from the Kilroy toolbar icon for opens per day, opens by
+   recipient, and every message you've tracked.
+
+WHAT AN "OPEN" REALLY MEANS
+An open is an image being fetched -- not proof a person read your email. Kilroy
+sets aside the things that fetch images but aren't people: security scanners,
+Apple Mail's privacy prefetch, and your own re-reads. It never invents a city or
+a device. Treat the first-open time as the reliable number; counts are a floor,
+not a total.
+
+YOUR DATA IS YOURS
+Your tracking is scoped to your account and isolated from every other user. Want
+to hold it entirely yourself? One click in the options points Kilroy at your own
+database, and then nobody, not even us, can read it.
+
+GOOD TO KNOW
+- Turn tracking off for any single message from the chip beside Send.
+- Pin Kilroy: click the puzzle-piece icon in Chrome's toolbar, then the pin next
+  to Kilroy, so the dashboard is one click away.
+- Using your own database? Export your settings (Options > Preferences) so a
+  reinstall can't lose them.
+
+Open Gmail and try it: https://mail.google.com/
+
+--
+Kilroy is open source: https://github.com/RelayLabs-apps/kilroy
+Relay Labs. You're receiving this because you set up Kilroy.
+To stop these emails, reply with "unsubscribe".

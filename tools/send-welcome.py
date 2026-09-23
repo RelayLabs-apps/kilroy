@@ -29,13 +29,26 @@ key = os.environ.get("RESEND_API_KEY")
 if not key:
     sys.exit("Set RESEND_API_KEY in your environment first (do not put it on the command line).")
 
-html = (Path(__file__).resolve().parent.parent / "docs" / "email" / "welcome.html").read_text(encoding="utf-8")
+emails = Path(__file__).resolve().parent.parent / "docs" / "email"
+html = (emails / "welcome.html").read_text(encoding="utf-8")
+# A plain-text alternative: HTML-only mail is a spam signal, and some clients
+# prefer text. Falls back to a bare line if the .txt is missing.
+txt_path = emails / "welcome.txt"
+text = txt_path.read_text(encoding="utf-8") if txt_path.exists() else "You're set up with Kilroy."
+
+# Reply-to-unsubscribe is honest at this scale and List-Unsubscribe improves
+# inbox placement (Gmail/Yahoo look for it). Swap to a one-click https endpoint
+# if volume grows.
+unsub = args.sender.split("<")[-1].strip(" <>") or "kilroy@relaylabs.site"
 
 payload = json.dumps({
     "from": args.sender,
     "to": [args.to],
     "subject": args.subject,
     "html": html,
+    "text": text,
+    "reply_to": unsub,
+    "headers": {"List-Unsubscribe": f"<mailto:{unsub}?subject=unsubscribe>"},
 }).encode("utf-8")
 
 req = urllib.request.Request(
