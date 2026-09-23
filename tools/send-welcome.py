@@ -41,7 +41,13 @@ payload = json.dumps({
 req = urllib.request.Request(
     "https://api.resend.com/emails",
     data=payload,
-    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+    headers={
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        # Cloudflare fronts api.resend.com and blocks urllib's default
+        # "Python-urllib/x" agent with error 1010. Any real UA gets through.
+        "User-Agent": "Kilroy-Mailer/1.0 (+https://relaylabs.site)",
+    },
     method="POST",
 )
 try:
