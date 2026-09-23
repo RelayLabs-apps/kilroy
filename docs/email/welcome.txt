@@ -32,6 +32,7 @@ GOOD TO KNOW
 Open Gmail and try it: https://mail.google.com/
 
 --
-Kilroy is open source: https://github.com/RelayLabs-apps/kilroy
+More at: https://kilroy.relaylabs.site
+Open source: https://github.com/RelayLabs-apps/kilroy
 Relay Labs. You're receiving this because you set up Kilroy.
 To stop these emails, reply with "unsubscribe".
