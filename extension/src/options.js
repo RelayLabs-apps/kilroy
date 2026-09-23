@@ -226,6 +226,46 @@ $("openDash").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
 });
 
+// ---------------------------------------------------------------- backup --
+
+$("exportSettings").addEventListener("click", async () => {
+  try {
+    const data = await api.exportSettings();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "kilroy-settings.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    say($("backupMsg"),
+      data.config ? "Saved your project and preferences to kilroy-settings.json."
+                  : "Saved your preferences to kilroy-settings.json.", "ok");
+  } catch (err) {
+    say($("backupMsg"), err.message, "bad");
+  }
+});
+
+$("importBtn").addEventListener("click", () => $("importFile").click());
+
+$("importFile").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";  // let the same file be picked again later
+  if (!file) return;
+  say($("backupMsg"), "Loading…");
+  try {
+    const data = JSON.parse(await file.text());
+    const { restoredConfig } = await api.importSettings(data);
+    await loadForm();
+    await runChecks();
+    say($("backupMsg"), restoredConfig
+      ? "Settings loaded. Sign in above if you're not already."
+      : "Preferences loaded.", "ok");
+  } catch (err) {
+    say($("backupMsg"), `Couldn't load that file: ${err.message}`, "bad");
+  }
+});
+
 for (const key of ["trackPixel", "trackLinks"]) {
   $(key).addEventListener("change", async (e) => {
     await api.setSettings({ [key]: e.target.checked });

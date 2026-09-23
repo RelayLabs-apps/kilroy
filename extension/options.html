@@ -348,6 +348,23 @@ supabase functions deploy r  --no-verify-jwt</code>
         </label>
       </div>
       <div class="msg" id="prefsMsg"></div>
+
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+        <b style="font-weight:500;font-size:13px;">Back up your settings</b>
+        <small>
+          Uninstalling a Chrome extension erases its settings — Chrome does not
+          keep them. If you connected your own Supabase project, export a copy;
+          after reinstalling, load it here (or set the project up by hand again).
+          The file holds your project URL, its public key, and your preferences —
+          not your login.
+        </small>
+        <div class="actions">
+          <button class="ghost" id="exportSettings">Export settings</button>
+          <button class="ghost" id="importBtn">Load settings</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+        <div class="msg" id="backupMsg"></div>
+      </div>
     </div>
   </section>
 

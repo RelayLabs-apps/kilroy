@@ -209,6 +209,38 @@ export async function setSettings(patch) {
   return next;
 }
 
+// ------------------------------------------------------------------ backup --
+
+/**
+ * A portable copy of the settings a reinstall would otherwise lose: the
+ * self-host project (if any) and the track preferences.
+ *
+ * The session is deliberately left out — it is per-device and the one genuinely
+ * sensitive value. The publishable key this does include is public by design
+ * (it rides in every request already), so the exported file holds nothing that
+ * can read anyone's data on its own. The hosted default is omitted too: it ships
+ * with the extension, so there's nothing to back up.
+ */
+export async function exportSettings() {
+  return {
+    kilroy: "settings",
+    version: 1,
+    config: (await savedConfig()) ?? null,
+    settings: await getSettings(),
+  };
+}
+
+export async function importSettings(data) {
+  if (data?.kilroy !== "settings") throw new Error("this isn't a Kilroy settings file");
+  // setConfig re-validates and refuses a secret/service_role key, so a tampered
+  // or wrong file can't quietly point the extension somewhere dangerous.
+  if (data.config?.url && data.config?.anonKey) {
+    await setConfig({ url: data.config.url, anonKey: data.config.anonKey });
+  }
+  if (data.settings) await setSettings(data.settings);
+  return { restoredConfig: Boolean(data.config?.url) };
+}
+
 // -------------------------------------------------------------------- auth --
 
 const now = () => Math.floor(Date.now() / 1000);
