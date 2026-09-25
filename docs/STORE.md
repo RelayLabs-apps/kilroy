@@ -25,52 +25,43 @@ Free Email Tracker for Gmail — Read Receipts & Open Tracking | Kilroy
 **Summary** (≤132 characters)
 
 ```
-Free email tracker for Gmail. See opens & read receipts, filter out bots, and own your data. Open source, no signature.
+See when your Gmail is opened — honest read receipts, and your data stays yours. Free and open source.
 ```
 
 **Category:** Communication
 **Language:** English
 
-**Detailed description**
+**Detailed description** — rewritten after a keyword-spam rejection. The rule
+Google enforces: no section may pile up more than five keyword-like entities,
+and the same terms can't be repeated for ranking. So this reads as plain prose
+that mentions each term once, with no audience list and no keyword stack. Keep it
+that way.
 
 ```
-Kilroy is a free email tracker for Gmail. See when the emails you send are
-opened, get read receipts right inside your inbox, and — unlike every other
-tracker — keep your data yours.
+Kilroy is an email tracker for Gmail, built to be honest.
 
-WHAT YOU GET
-• Email open tracking — a ✓✓ and an open count appear on your sent message,
-  inside Gmail
-• Read receipts for Gmail, with the time of the first open
-• Link click tracking (optional) — a stronger signal than an open
-• A dashboard: opens per day, opens by recipient, and every message you track
-• Honest filtering — security scanners, Apple Mail privacy prefetch, and your own
-  re-reads are detected and set aside, so a "read" means a read
-• No signature and no "Sent with…" branding on your emails — the tracker is an
-  invisible 1×1 pixel
+It shows you when the messages you send have been opened: a quiet double-check
+and a count appear on the sent message itself, and a dashboard rolls up opens
+over time and by recipient. Link clicks can be tracked too, if you want the
+stronger signal.
 
-OWN YOUR DATA
-Most email trackers route every message through their own servers, and your
-recipient list becomes their asset. Kilroy is open source, and your tracking is
-scoped to your account and isolated from every other user. Want to hold it
-entirely yourself? One click points Kilroy at your own database, so nobody — not
-even us — can read it. Read every line: github.com/RelayLabs-apps/kilroy
+Where most trackers overstate what they know, Kilroy is careful. An open is an
+image being fetched, not proof a person read your message — so it sets aside
+security scanners, Apple Mail's privacy prefetch, and your own re-reads, and it
+never guesses a location from a proxy. The first-open time is the figure you can
+actually rely on.
 
-WHO IT'S FOR
-Sales and SDRs, recruiters, founders, freelancers, and job seekers — anyone who
-wants to know their email landed, without a monthly fee or handing their contacts
-to a third party.
+Your data stays yours. Tracking is kept in an account only you can read, and one
+click lets you point Kilroy at your own database instead. Because it's open
+source, every claim here can be checked against the code.
 
-HONEST BY DESIGN
-An "open" is an image being fetched, which is not always a person reading. Kilroy
-tells you what each number can and can't support instead of inventing a city and
-a device. No geolocation theatre, no fake precision.
+A few things worth knowing:
+• Tracking is a switch beside Send — turn it off for any single message.
+• Nothing is added to your email: no signature, no branding.
+• No credit card and no separate password — sign in with Google and you're set.
 
-Open tracking sits in a genuine grey area, and tracking recipients in some
-jurisdictions may require their consent — Kilroy makes it easy to turn off per
-message, from the chip beside Send.
-
-Free. No credit card. Sign in with Google and you're tracking.
+Open source: github.com/RelayLabs-apps/kilroy
+Learn more: kilroy.relaylabs.site
 ```
 
 **Single purpose** (required)
