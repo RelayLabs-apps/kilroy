@@ -35,9 +35,43 @@
 
   const TOKEN_IN_URL = /\/px\/([A-Za-z0-9_-]{16,64})\.gif/;
 
+  // ----------------------------------------------------- instance hand-off --
+  //
+  // Chrome never re-runs content scripts in tabs that are already open when the
+  // extension is reloaded or auto-updated. The old copy keeps running — its
+  // observers fire, it paints chips — but every chrome.* call is dead
+  // ("Extension context invalidated"), so each compose it touches goes out
+  // untracked until Gmail is reloaded. Gmail tabs stay open for days, which made
+  // this the main way tracking stopped without anyone noticing. background.js
+  // now injects a fresh copy into open Gmail tabs on install and update; this is
+  // how the two copies hand over.
+
+  const INSTANCE = Math.random().toString(36).slice(2);
+  document.documentElement.dataset.kilroyInstance = INSTANCE;
+
+  /** False once this copy's extension context is gone (reloaded or updated). */
+  function alive() {
+    try { return Boolean(chrome.runtime?.id); } catch { return false; }
+  }
+
+  /** A newer copy of this script has taken over the page. */
+  function superseded() {
+    return document.documentElement.dataset.kilroyInstance !== INSTANCE;
+  }
+
+  // Take over from any earlier copy: drop its chips and badges, and the pixels
+  // it put into composes that are still open — those carry its tokens, whose
+  // draft rows will now never be marked sent. Those composes are re-armed with
+  // fresh tokens by the scan below. On a normal page load there is nothing here.
+  document.querySelectorAll(".kilroy-chip, .kilroy-badge, .kilroy-row-badge")
+    .forEach((el) => el.remove());
+  document.querySelectorAll('div[role="textbox"] img[data-kilroy]')
+    .forEach((el) => el.remove());
+
   // ------------------------------------------------------------- plumbing --
 
   function ask(type, payload = {}) {
+    if (!alive()) return Promise.resolve({ ok: false, error: "orphaned" });
     return new Promise((resolve) => {
       try {
         chrome.runtime.sendMessage({ type, ...payload }, (res) => {
@@ -133,6 +167,12 @@
   }
 
   function injectPixel(bodyEl, base, token) {
+    // A pixel carrying some OTHER token — left by an earlier copy of this
+    // script, or brought back in a resumed draft — would be counted against a
+    // row that is never marked sent. Ours replaces it.
+    bodyEl.querySelectorAll("img[data-kilroy]").forEach((el) => {
+      if (el.getAttribute("data-kilroy") !== token) el.remove();
+    });
     if (bodyEl.querySelector("img[data-kilroy]")) return;
     const img = document.createElement("img");
     img.src = `${base}/px/${token}.gif`;
@@ -203,17 +243,25 @@
     return chip;
   }
 
-  function paintChip(chip, armed, note) {
+  function paintChip(chip, armed, note, label) {
     if (!chip) return;
     chip.dataset.armed = String(armed);
     chip.setAttribute("aria-checked", String(armed));
-    chip.querySelector(".kilroy-chip__label").textContent = armed ? "Tracking" : "Not tracked";
+    chip.querySelector(".kilroy-chip__label").textContent =
+      label ?? (armed ? "Tracking" : "Not tracked");
     chip.setAttribute("aria-label", armed
       ? "Kilroy tracking on for this message"
       : "Kilroy tracking off for this message");
     chip.title = note ?? (armed
       ? "Kilroy will record when this message is opened. Click to turn off."
       : "This message won't be tracked. Click to turn on.");
+  }
+
+  /** This copy lost its extension and nothing replaced it: say so, plainly. */
+  function paintOrphaned(chip) {
+    paintChip(chip, false,
+      "Kilroy was updated or reloaded. Reload this Gmail tab (your draft is saved) — until then, this message won't be tracked.",
+      "Reload Gmail");
   }
 
   /**
@@ -291,14 +339,23 @@
     return [...out];
   }
 
-  function hookSend(root, bodyEl, token) {
+  /**
+   * `armed()` says whether tracking is on for this message; `ensurePixel()` puts
+   * the pixel back if editing removed it. The chip's state is the source of
+   * truth, not the pixel's presence: a Gemini rewrite, select-all-and-paste, or
+   * a signature swap can strip the pixel from the body while the chip still
+   * says "Tracking" — and reading that as "you turned it off" sent the message
+   * untracked and left the row a draft.
+   */
+  function hookSend(root, bodyEl, token, armed, ensurePixel) {
     let fired = false;
 
     const fire = () => {
       if (fired) return;
-      // Absent pixel means you toggled tracking off for this one. Leave the row
-      // as a draft and let the sweeper collect it.
-      if (!bodyEl.querySelector("img[data-kilroy]")) return;
+      // Tracking switched off for this one: leave the row as a draft and let
+      // the sweeper collect it.
+      if (!armed()) return;
+      ensurePixel();
       fired = true;
       const scope = fieldScopeFor(bodyEl, root);
       ask("markSent", {
@@ -308,6 +365,12 @@
         threadId: currentThreadId(),
       });
     };
+
+    // Gmail may act on mousedown rather than click, so the pixel is made sure
+    // of then. markSent itself can wait for the click — it is only a PATCH.
+    root.addEventListener("mousedown", (e) => {
+      if (armed() && e.target instanceof Element && e.target.closest(SEL.send)) ensurePixel();
+    }, true);
 
     root.addEventListener("click", (e) => {
       if (e.target instanceof Element && e.target.closest(SEL.send)) fire();
@@ -356,65 +419,122 @@
 
     const root = composeRootFor(bodyEl);
     if (!root) return;  // not a compose, or Gmail hasn't finished rendering it
-    instrumented.add(bodyEl);
-
-    const status = await getStatus();
 
     // Stay out of Gmail accounts Kilroy isn't signed in as. The content script
     // matches every mail.google.com tab, so it runs in each Google account you
     // have open — but Kilroy is signed in as exactly one, and a message composed
     // in a different account would mint a pixel under the wrong identity and be
-    // filed against the wrong person's data. When this tab is plainly a
-    // different account than the one Kilroy holds, add nothing at all: no chip,
-    // no pixel. Fail open when the account can't be read, so a Gmail selector
-    // change never silently disables tracking in the account that IS right.
-    if (status?.ok && status.signedIn && status.email) {
+    // filed against the wrong person's data. Only bail on a POSITIVE mismatch,
+    // and do it BEFORE marking the body instrumented, so an ambiguous or
+    // transient account read retries on the next scan instead of disabling the
+    // chip for good. Fail open when the account can't be read, so a Gmail
+    // selector change never silently disables tracking in the account that IS
+    // right.
+    const probe = await getStatus();
+    if (probe?.ok && probe.signedIn && probe.email) {
       const account = currentAccountEmail();
-      if (account && account !== status.email.toLowerCase()) return;
+      if (account && account !== probe.email.toLowerCase()) return;
     }
 
-    // The chip goes up before anything can fail, because the states below are
-    // exactly the ones worth seeing. Returning early — as this did when signed
-    // out — left no chip at all, which is indistinguishable from Kilroy not
-    // being installed: you compose, you send, and nothing is tracked, silently.
-    // An absent session is not a rare edge case either. Extension storage is
-    // keyed by extension ID, so anything that changes the ID empties it.
+    instrumented.add(bodyEl);
+
+    // The chip goes up before anything can fail, because an absent chip is
+    // indistinguishable from Kilroy not being installed. Crucially it is
+    // ALWAYS clickable, and clicking re-attempts arming. The previous version
+    // wired the toggle only on the full-success path, so any hiccup at compose
+    // time — a cold MV3 service worker, a slow createDraft — left a DEAD chip:
+    // greyed, inert to clicks, never retrying, and the message went out with no
+    // pixel. That is the "I clicked track but nothing happened / no K" bug.
     const chip = addChip(root);
 
-    if (!status?.ok) {
-      paintChip(chip, false, `Kilroy isn't responding (${status?.error ?? "no reply"}). This message won't be tracked.`);
-      return;
+    let token = null;      // the draft row's token — minted once, on first arm
+    let base = null;       // backend base URL, captured alongside the token
+    let sendHooked = false;
+    let arming = false;
+
+    // Bring the message to the armed state: a pixel in the body, the send and
+    // link hooks wired. Safe to call repeatedly — the draft row is minted at
+    // most once, the hooks are wired at most once — so a click or a background
+    // retry can recover from an earlier transient failure. Returns whether the
+    // message is armed.
+    async function arm() {
+      if (arming) return chip.dataset.armed === "true";
+      if (superseded()) return false;  // a newer copy owns this compose now
+      if (!alive()) {
+        paintOrphaned(chip);
+        return false;
+      }
+      arming = true;
+      try {
+        const status = await getStatus(true);   // force fresh — wakes a cold SW
+        if (!status?.ok) {
+          paintChip(chip, false, `Kilroy isn't responding yet (${status?.error ?? "no reply"}). Click to try again.`);
+          return false;
+        }
+        if (!status.signedIn) {
+          paintChip(chip, false, "Kilroy is signed out — sign in from its options, then reload Gmail.");
+          return false;
+        }
+        if (!status.settings.trackPixel) {
+          paintChip(chip, false, "Tracking is off in Kilroy's options. Turn it on there, then click here.");
+          return false;
+        }
+        if (!token) {
+          const draft = await ask("createDraft");
+          if (!draft.ok) {
+            paintChip(chip, false, `Kilroy couldn't start tracking (${draft.error}). Click to try again.`);
+            return false;
+          }
+          token = draft.token;
+          base = status.base;
+        }
+        injectPixel(bodyEl, base, token);
+        paintChip(chip, true);
+        if (!sendHooked) {
+          const isArmed = () => chip.dataset.armed === "true";
+          const ensurePixel = () => injectPixel(bodyEl, base, token);
+          hookSend(root, bodyEl, token, isArmed, ensurePixel);
+          if (status.settings.trackLinks) watchLinks(bodyEl, token, base);
+          // Keep the pixel in the body for as long as tracking is on. It sits
+          // last in the editor, where a Gemini rewrite, select-all-and-paste,
+          // or a signature swap removes it without anyone seeing.
+          new MutationObserver(() => {
+            if (isArmed() && !superseded() && !bodyEl.querySelector("img[data-kilroy]")) ensurePixel();
+          }).observe(bodyEl, { childList: true, subtree: true });
+          sendHooked = true;
+        }
+        return true;
+      } finally {
+        arming = false;
+      }
     }
 
-    if (!status.signedIn) {
-      paintChip(chip, false, "Kilroy is signed out — sign in from its options, then reload Gmail. This message won't be tracked.");
-      return;
-    }
-
-    if (!status.settings.trackPixel) {
-      paintChip(chip, false, "Tracking is off in Kilroy's options.");
-      return;
-    }
-
-    const draft = await ask("createDraft");
-    if (!draft.ok) {
-      paintChip(chip, false, `Kilroy: ${draft.error}`);
-      return;
-    }
-
-    const { token } = draft;
-    injectPixel(bodyEl, status.base, token);
-    paintChip(chip, true);
-
+    // Click toggles. Armed → turn tracking off (drop the pixel). Not armed →
+    // (re)attempt to arm, which heals any earlier transient failure.
     chip?.addEventListener("click", () => {
-      const armed = chip.dataset.armed !== "true";
-      if (armed) injectPixel(bodyEl, status.base, token);
-      else removePixel(bodyEl);
-      paintChip(chip, armed);
+      if (chip.dataset.armed === "true") {
+        removePixel(bodyEl);
+        paintChip(chip, false, "This message won't be tracked. Click to turn tracking back on.");
+      } else {
+        arm();
+      }
     });
 
-    hookSend(root, bodyEl, token);
-    if (status.settings.trackLinks) watchLinks(bodyEl, token, status.base);
+    // Arm automatically on open. If it fails for a transient reason, keep
+    // retrying briefly in the background so the common cold-start case heals
+    // itself without the user having to notice — the chip stays clickable the
+    // whole time as a manual fallback.
+    if (!(await arm())) {
+      let tries = 0;
+      const retry = setInterval(() => {
+        if (chip.dataset.armed === "true" || ++tries > 6 || !document.body.contains(bodyEl)
+            || superseded() || !alive()) {
+          clearInterval(retry);
+          return;
+        }
+        arm();
+      }, 2000);
+    }
   }
 
   // ------------------------------------------------- reading your own mail --
@@ -437,13 +557,26 @@
     return found;
   }
 
-  /** Which Gmail account this tab is currently showing. */
+  /**
+   * Which Google account this tab is signed into — the account, never the
+   * address you're sending as. A send-as alias (you@mit.edu inside your
+   * you@gmail.com Gmail) is still this account.
+   *
+   * Gmail's title ends "… - you@gmail.com - Gmail" in every view, including a
+   * popped-out compose, so read the LAST address in it (a subject can carry an
+   * address too, but always earlier). Failing that, the Google Account button
+   * and only it: the old page-wide sweep took the first aria-label with an "@"
+   * in it, which a recipient chip or a From field could beat to the front.
+   */
   function currentAccountEmail() {
-    for (const el of document.querySelectorAll('[aria-label*="@"]')) {
-      const found = /[\w.+-]+@[\w.-]+\.\w{2,}/.exec(el.getAttribute("aria-label") ?? "");
-      if (found) return found[0].toLowerCase();
-    }
-    return null;
+    const inTitle = document.title.match(/[\w.+-]+@[\w.-]+\.\w{2,}/g);
+    if (inTitle) return inTitle[inTitle.length - 1].toLowerCase();
+
+    const button = document.querySelector(
+      'a[aria-label^="Google Account"], header [aria-label*="@"], #gb [aria-label*="@"]',
+    );
+    const found = /[\w.+-]+@[\w.-]+\.\w{2,}/.exec(button?.getAttribute("aria-label") ?? "");
+    return found ? found[0].toLowerCase() : null;
   }
 
   /**
@@ -462,13 +595,6 @@
   function legacyMessageIdFor(img) {
     return img.closest("[data-legacy-message-id]")
       ?.getAttribute("data-legacy-message-id") ?? null;
-  }
-
-  /** Who sent the message this pixel belongs to. */
-  function senderOf(img) {
-    const item = img.closest('[role="listitem"]');
-    const addr = item?.querySelector("span[email], .gD")?.getAttribute("email");
-    return addr ? addr.toLowerCase() : null;
   }
 
   function badgeHostFor(img) {
@@ -555,7 +681,7 @@
    * pixel isn't counted as the recipient opening it, and refresh the numbers.
    */
   async function pulse({ force = false } = {}) {
-    if (document.hidden) return;
+    if (document.hidden || superseded()) return;
 
     const rendered = renderedTokens();
     if (!rendered.size) return;
@@ -566,19 +692,24 @@
 
     const tokens = [...rendered.keys()];
 
-    // Only the account that SENT a message may suppress its opens.
+    // Only the account Kilroy is signed in as may suppress its opens.
     //
     // This content script matches mail.google.com for every account you're
     // signed into, not just the sending one. Read your own mail in a second
     // Gmail account in the same browser and, without this check, that read
-    // cancels out the very open you were trying to observe. When we can
-    // identify both the viewer and the sender and they differ, we are the
-    // recipient here and must stay quiet.
-    const account = currentAccountEmail();
-    const ours = tokens.filter((token) => {
-      const from = senderOf(rendered.get(token));
-      return !(account && from && from !== account);
-    });
+    // cancels out the very open you were trying to observe. So when this tab is
+    // plainly a different Google account than Kilroy's, we are the recipient
+    // here and must stay quiet.
+    //
+    // This used to compare the viewer with each message's From address, which
+    // misread everything sent from a send-as alias (From: you@mit.edu, viewer:
+    // you@gmail.com) as someone else's mail — so your own re-reads of it were
+    // counted as opens. Claiming every rendered token is safe: note_self_view
+    // ignores any token that isn't the caller's own, so mail other Kilroy users
+    // sent you is untouched.
+    const viewer = currentAccountEmail();
+    const kilroyAccount = (await getStatus())?.email?.toLowerCase() ?? null;
+    const ours = viewer && kilroyAccount && viewer !== kilroyAccount ? [] : tokens;
 
     // Forget messages that have left the screen; seeing them again means a new
     // render and a new fetch to account for.
@@ -683,6 +814,12 @@
   // --------------------------------------------------------------- driver --
 
   const scan = throttle(() => {
+    if (superseded()) return standDown();
+    if (!alive()) {
+      // Nothing replaced this copy — injection failed, or the extension was
+      // turned off. Make every chip say what's wrong rather than look armed.
+      document.querySelectorAll(".kilroy-chip").forEach(paintOrphaned);
+    }
     paintListBadges().catch(() => {});
     document.querySelectorAll(SEL.composeBody).forEach((el) => {
       instrumentCompose(el).catch(() => {});
@@ -691,12 +828,23 @@
   }, 250);
 
   const pulseNow = () => pulse({ force: true }).catch(() => {});
+  const onVisible = () => { if (!document.hidden) pulseNow(); };
 
-  new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) pulseNow(); });
+  const observer = new MutationObserver(scan);
+  observer.observe(document.body, { childList: true, subtree: true });
+  document.addEventListener("visibilitychange", onVisible);
   window.addEventListener("focus", pulseNow);
   window.addEventListener("hashchange", pulseNow);
-  setInterval(() => pulse().catch(() => {}), 5_000);
+  const heartbeat = setInterval(() => pulse().catch(() => {}), 5_000);
+
+  /** A newer copy has taken over the page; get out of its way entirely. */
+  function standDown() {
+    observer.disconnect();
+    clearInterval(heartbeat);
+    document.removeEventListener("visibilitychange", onVisible);
+    window.removeEventListener("focus", pulseNow);
+    window.removeEventListener("hashchange", pulseNow);
+  }
 
   scan();
 })();

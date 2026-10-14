@@ -105,6 +105,16 @@ Kilroy never sees the user's Google password and requests no Gmail API scopes.
 Email-and-password sign-in is the default and does not use this permission.
 ```
 
+**scripting**
+```
+Used only to load Kilroy's own content script (the same file declared in the
+manifest) into Gmail tabs that were already open when Kilroy is installed or
+updated. Chrome does not do this by itself, so without it tracking silently
+stops in those tabs until the user reloads Gmail. No remote or dynamically
+generated code is ever injected, and it touches no site other than
+mail.google.com.
+```
+
 **Host permissions** — the store uses a single justification box (1000-char
 limit) for all host permissions. Paste this (983 chars):
 ```

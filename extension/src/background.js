@@ -135,11 +135,40 @@ const handlers = {
   },
 };
 
-// First install: put the setup page in front of the user rather than leaving
-// them to discover the options page on their own. Only on install — reopening
-// it on every update would be a nuisance.
+/**
+ * Put a live copy of the content script into Gmail tabs that are already open.
+ *
+ * Chrome runs content scripts only as pages load. A Gmail tab open when Kilroy
+ * is installed has none; one open across a reload or an auto-update keeps the
+ * OLD copy, whose every call to this worker now fails — so each message sent
+ * from that tab goes out untracked until the tab is reloaded, and Gmail tabs
+ * stay open for days. The fresh copy takes over from the stale one (see the
+ * hand-off in content.js). Tabs Chrome has discarded can't be injected; they
+ * load the script normally when they come back.
+ */
+async function injectIntoOpenGmailTabs() {
+  const script = chrome.runtime.getManifest().content_scripts?.[0];
+  if (!script || !chrome.scripting) return;
+  const tabs = await chrome.tabs.query({ url: script.matches });
+  await Promise.all(tabs.map(async (tab) => {
+    if (tab.discarded) return;
+    const target = { tabId: tab.id };
+    try {
+      if (script.css?.length) await chrome.scripting.insertCSS({ target, files: script.css });
+      if (script.js?.length) await chrome.scripting.executeScript({ target, files: script.js });
+    } catch {
+      // Still loading, or not injectable: it runs the script on its own load.
+    }
+  }));
+}
+
 chrome.runtime.onInstalled.addListener(({ reason }) => {
+  // First install: put the setup page in front of the user rather than leaving
+  // them to discover the options page on their own. Only on install —
+  // reopening it on every update would be a nuisance.
   if (reason === "install") chrome.runtime.openOptionsPage();
+  // An unpacked reload counts as an update too.
+  if (reason === "install" || reason === "update") injectIntoOpenGmailTabs();
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
