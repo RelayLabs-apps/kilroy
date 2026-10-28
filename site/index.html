@@ -116,6 +116,31 @@
   .trust span{display:inline-flex;align-items:center;gap:9px;font-size:14.5px;color:var(--mist);}
   .trust span::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--signal);}
 
+  .hero .watchlink{display:inline-flex;align-items:center;gap:9px;margin-top:22px;
+                   color:var(--paper);text-decoration:none;font-weight:500;font-size:15px;}
+  .hero .watchlink .dot{width:26px;height:26px;border-radius:50%;background:var(--signal);
+                        display:grid;place-items:center;}
+  .hero .watchlink .dot svg{width:10px;height:10px;margin-left:2px;fill:var(--white);}
+  .hero .watchlink:hover{color:var(--white);}
+  .hero .watchlink:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:6px;}
+
+  /* video — a poster until someone presses play; see the script at the end */
+  .watch{padding-bottom:20px;}
+  .watch .sec-head{margin-inline:auto;text-align:center;}
+  .video{position:relative;display:block;margin:40px auto 0;max-width:960px;aspect-ratio:16/9;
+         border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);
+         border:1px solid #e3dfd3;background:var(--paper-2);}
+  .video img,.video iframe{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover;}
+  .video .play{position:absolute;left:50%;top:50%;width:84px;height:84px;margin:-42px 0 0 -42px;
+               border-radius:50%;background:var(--ink);display:grid;place-items:center;
+               box-shadow:0 10px 30px rgba(6,20,40,.35);transition:transform .15s ease,background .15s ease;}
+  .video .play svg{width:28px;height:28px;margin-left:5px;fill:var(--white);}
+  a.video:hover .play{transform:scale(1.06);background:var(--signal);}
+  .video .len{position:absolute;right:14px;bottom:12px;background:rgba(6,32,59,.86);color:var(--paper);
+              font-family:"IBM Plex Mono",monospace;font-size:12.5px;padding:3px 8px;border-radius:6px;}
+  a.video:focus-visible{outline:3px solid var(--focus);outline-offset:3px;}
+  .video-note{margin-top:14px;text-align:center;font-size:13.5px;color:var(--slate);}
+
   /* generic section */
   section{padding-block:84px;}
   .sec-head{max-width:60ch;}
@@ -201,6 +226,8 @@
     .card.wide{grid-column:auto;grid-template-columns:1fr;}
     .ledger,.own .split{grid-template-columns:1fr;}
     .nav-links{display:none;}
+    .video .play{width:64px;height:64px;margin:-32px 0 0 -32px;}
+    .video .play svg{width:22px;height:22px;margin-left:4px;}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
@@ -212,6 +239,7 @@
     <a class="brand" href="#top"><img src="./assets/mark.png" alt="Kilroy"><b>Kilroy</b></a>
     <nav>
       <span class="nav-links">
+        <a href="#watch">Watch</a>
         <a href="#how">How it works</a>
         <a href="#features">Features</a>
         <a href="#honest">Accuracy</a>
@@ -240,6 +268,10 @@
           <a class="btn btn-ghost" href="https://github.com/RelayLabs-apps/kilroy" target="_blank" rel="noopener">Read the code →</a>
         </div>
         <p class="fine">Free · No credit card · Sign in with Google and you're tracking</p>
+        <a class="watchlink" href="#watch">
+          <span class="dot" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M1 0.5v9l8-4.5z"/></svg></span>
+          Watch it in 20 seconds
+        </a>
       </div>
       <div class="shot">
         <div class="peek"><img src="./assets/mark.png" alt=""></div>
@@ -258,6 +290,24 @@
       <span>No signature on your mail</span>
     </div>
   </div>
+
+  <!-- WATCH -->
+  <section id="watch" class="watch">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="eyebrow">Twenty seconds</div>
+        <h2>Kilroy, the short version.</h2>
+        <p>When your Gmail is opened, you'll know — and the data stays yours.</p>
+      </div>
+      <a class="video" href="https://www.youtube.com/watch?v=0OdrN5KGiTg" target="_blank" rel="noopener"
+         data-yt="0OdrN5KGiTg" aria-label="Play the 20-second Kilroy video">
+        <img src="./assets/video-poster.jpg" alt="" width="1280" height="720" loading="lazy">
+        <span class="play" aria-hidden="true"><svg viewBox="0 0 10 10"><path d="M1 0.5v9l8-4.5z"/></svg></span>
+        <span class="len">0:20</span>
+      </a>
+      <p class="video-note">Plays from YouTube in privacy-enhanced mode — nothing loads from YouTube until you press play.</p>
+    </div>
+  </section>
 
   <!-- HOW IT WORKS -->
   <section id="how">
@@ -415,6 +465,27 @@
     </div>
   </div>
 </footer>
+
+<script>
+  // Click-to-play. The page shows a self-hosted poster and contacts YouTube only
+  // once someone presses play — then via youtube-nocookie, its privacy-enhanced
+  // mode. Without JavaScript the poster is just a link to the video on YouTube.
+  document.querySelectorAll("a.video[data-yt]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const frame = document.createElement("iframe");
+      frame.src = `https://www.youtube-nocookie.com/embed/${link.dataset.yt}?autoplay=1&rel=0&playsinline=1`;
+      frame.title = "Kilroy, the short version";
+      frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      frame.allowFullscreen = true;
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      const box = document.createElement("div");
+      box.className = "video";
+      box.append(frame);
+      link.replaceWith(box);
+    });
+  });
+</script>
 
 </body>
 </html>

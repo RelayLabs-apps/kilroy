@@ -78,10 +78,27 @@ owns and controls. Everything the extension does serves that one purpose.
 https://github.com/RelayLabs-apps/kilroy/blob/main/docs/PRIVACY.md
 ```
 
-**Homepage / support URL**
+**Homepage URL** (Store listing → Additional fields)
 
 ```
-https://github.com/RelayLabs-apps/kilroy
+https://kilroy.relaylabs.site/
+```
+
+**Support URL**
+
+```
+https://github.com/RelayLabs-apps/kilroy/issues
+```
+
+**Official URL** — the field with the verified badge. It only offers domains the
+publisher account has verified in Google Search Console, so verify
+`relaylabs.site` there first (a DNS TXT record at Namecheap), signed in as the
+publisher account, then pick it here.
+
+**Promo video** (YouTube, unlisted is fine)
+
+```
+https://www.youtube.com/watch?v=0OdrN5KGiTg
 ```
 
 ---
